@@ -1,0 +1,168 @@
+{
+  "realm": "agents-demo",
+  "enabled": true,
+  "sslRequired": "none",
+  "accessTokenLifespan": 900,
+  "clientScopes": [
+    {
+      "name": "basic",
+      "description": "Built-in claims (sub, auth_time). Required for a usable access token.",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "false",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "sub",
+          "protocolMapper": "oidc-sub-mapper",
+          "protocol": "openid-connect",
+          "config": {
+            "access.token.claim": "true",
+            "introspection.token.claim": "true"
+          }
+        },
+        {
+          "name": "auth_time",
+          "protocolMapper": "oidc-usersessionmodel-note-mapper",
+          "protocol": "openid-connect",
+          "config": {
+            "user.session.note": "AUTH_TIME",
+            "access.token.claim": "true",
+            "id.token.claim": "true",
+            "claim.name": "auth_time",
+            "jsonType.label": "long"
+          }
+        }
+      ]
+    },
+    {
+      "name": "expenses:read",
+      "description": "Read expense reports",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "expenses:approve",
+      "description": "Approve expense reports",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "payments:write",
+      "description": "Execute payments",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    },
+    {
+      "name": "employees:read",
+      "description": "Read employee records (incl. payroll PII)",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      }
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "expense-portal",
+      "description": "Accountant-facing portal. Issues the broad accountant token (the 'before' token).",
+      "enabled": true,
+      "publicClient": true,
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "defaultClientScopes": [
+        "basic",
+        "expenses:read",
+        "expenses:approve",
+        "payments:write",
+        "employees:read"
+      ],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "audience-expense-agent",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "expense-agent",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "expense-agent",
+      "description": "The AI agent. Authenticates the RFC 8693 token exchange. Its grantable scope is capped to expenses:read (the token cage).",
+      "enabled": true,
+      "publicClient": false,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "expense-agent-secret",
+      "standardFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "attributes": {
+        "standard.token.exchange.enabled": "true",
+        "access.token.lifespan": "300"
+      },
+      "defaultClientScopes": ["basic", "expenses:read"],
+      "optionalClientScopes": [],
+      "protocolMappers": [
+        {
+          "name": "audience-expense-api",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "config": {
+            "included.client.audience": "expense-api",
+            "access.token.claim": "true",
+            "id.token.claim": "false"
+          }
+        },
+        {
+          "name": "act-claim",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-hardcoded-claim-mapper",
+          "config": {
+            "claim.name": "act",
+            "claim.value": "{\"sub\":\"expense-agent\"}",
+            "jsonType.label": "JSON",
+            "access.token.claim": "true",
+            "id.token.claim": "false",
+            "userinfo.token.claim": "false"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "expense-api",
+      "description": "Downstream resource server. Used as the token-exchange audience; never logs in.",
+      "enabled": true,
+      "bearerOnly": true
+    }
+  ],
+  "users": [
+    {
+      "id": "accountant-123",
+      "username": "accountant-123",
+      "enabled": true,
+      "emailVerified": true,
+      "email": "accountant@example.com",
+      "firstName": "Fin",
+      "lastName": "Accountant",
+      "credentials": [
+        { "type": "password", "value": "password", "temporary": false }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "name": "atx-demo-agent",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "demo": "tsx --env-file-if-exists=.env src/demo.ts",
+    "demo:no-llm": "tsx --env-file-if-exists=.env src/demo-no-llm.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "^2.0.114",
+    "@mastra/core": "^1.51.0",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/node": "^26.1.1",
+    "tsx": "^4.23.1",
+    "typescript": "^7.0.2"
+  }
+}
