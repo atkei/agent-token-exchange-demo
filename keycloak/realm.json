@@ -128,19 +128,6 @@
             "access.token.claim": "true",
             "id.token.claim": "false"
           }
-        },
-        {
-          "name": "act-claim",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-hardcoded-claim-mapper",
-          "config": {
-            "claim.name": "act",
-            "claim.value": "{\"sub\":\"expense-agent\"}",
-            "jsonType.label": "JSON",
-            "access.token.claim": "true",
-            "id.token.claim": "false",
-            "userinfo.token.claim": "false"
-          }
         }
       ]
     },

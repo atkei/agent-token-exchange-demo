@@ -37,11 +37,16 @@ const EXPENSES: Record<
   },
 };
 
-type Claims = JWTPayload & { scope?: string; act?: { sub?: string } };
+type Claims = JWTPayload & { scope?: string; azp?: string };
 
 type AuthResult =
   | { ok: true; claims: Claims }
-  | { ok: false; status: 401 | 403; body: Record<string, unknown> };
+  | {
+      ok: false;
+      status: 401 | 403;
+      body: Record<string, unknown>;
+      claims?: Claims;
+    };
 
 async function authorize(
   authHeader: string | undefined,
@@ -79,6 +84,7 @@ async function authorize(
         required: requiredScope,
         granted: scopes,
       },
+      claims,
     };
   }
   return { ok: true, claims };
@@ -90,13 +96,19 @@ app.get("/expenses/:id", async (c) => {
   const id = c.req.param("id");
   const auth = await authorize(c.req.header("authorization"), "expenses:read");
   if (!auth.ok) {
-    console.log(`[api] GET /expenses/${id} -> ${auth.status}`, auth.body);
+    console.log(
+      `[api] GET /expenses/${id} -> ${auth.status}`,
+      auth.body,
+      auth.claims
+        ? `(sub=${auth.claims.sub}, azp=${auth.claims.azp})`
+        : "",
+    );
     return c.json(auth.body, auth.status);
   }
   const expense = EXPENSES[id];
   if (!expense) return c.json({ error: "not_found" }, 404);
   console.log(
-    `[api] GET /expenses/${id} -> 200  (sub=${auth.claims.sub}, act=${JSON.stringify(auth.claims.act)})`,
+    `[api] GET /expenses/${id} -> 200  (sub=${auth.claims.sub}, azp=${auth.claims.azp})`,
   );
   return c.json(expense);
 });
@@ -111,11 +123,14 @@ app.post("/expenses/:id/approve", async (c) => {
     console.log(
       `[api] POST /expenses/${id}/approve -> ${auth.status}`,
       auth.body,
+      auth.claims
+        ? `(sub=${auth.claims.sub}, azp=${auth.claims.azp})`
+        : "",
     );
     return c.json(auth.body, auth.status);
   }
   console.log(
-    `[api] POST /expenses/${id}/approve -> 200  (sub=${auth.claims.sub})`,
+    `[api] POST /expenses/${id}/approve -> 200  (sub=${auth.claims.sub}, azp=${auth.claims.azp})`,
   );
   return c.json({ id, approved: true, paymentScheduled: true });
 });

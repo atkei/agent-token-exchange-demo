@@ -14,7 +14,7 @@ export function printClaims(label: string, token: string): void {
   console.log(`\n── ${label} ──`);
   console.log(
     JSON.stringify(
-      { sub: c.sub, aud: c.aud, azp: c.azp, scope: c.scope, act: c.act, ttl },
+      { sub: c.sub, aud: c.aud, azp: c.azp, scope: c.scope, ttl },
       null,
       2,
     ),

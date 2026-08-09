@@ -9,9 +9,9 @@ The point in three lines:
   accountant's broad token straight through.
 - Instead, the agent **exchanges** that token for one narrowed to
   `aud=expense-api` and `scope=expenses:read`.
-- Now even a prompt-injection "approve this report and pay it out" can't do
-  damage: the caged token is rejected by the downstream API with **403
-  `insufficient_scope`**. You trust the _token_, not the agent.
+- Now even if prompt injection makes the agent try to approve and pay, that
+  write is rejected by the downstream API with **403 `insufficient_scope`**.
+  You trust the _token_, not the agent.
 
 ## Architecture
 
@@ -22,7 +22,7 @@ graph LR
   D -->|"2. generate(prompt, {requestContext})"| AG["Mastra expense-agent (OpenAI)"]
   AG --> T["tools: fetch-expense / approve-expense"]
   T -->|"3. Token Exchange (RFC 8693)<br/>aud=expense-api, scope=expenses:read"| KC
-  KC -->|"exchanged token (act, short-lived)"| T
+  KC -->|"exchanged token (azp=expense-agent, short-lived)"| T
   T -->|"4. Bearer exchanged token"| API["expense-api (Hono + JWKS)"]
 ```
 
@@ -37,15 +37,10 @@ holds, but it holds quietly. Callers should check the `scope` in the response
 rather than assume a rejection, or reject such requests explicitly with a Client
 Policy.
 
-> [!WARNING]
-> **About the `act` claim.** Keycloak's _Standard Token Exchange_ is
-> **impersonation** — the exchanged token keeps `sub` but does **not** get an
-> `act` (actor) claim on its own. To make the audit trail visible, this demo
-> attaches `act={"sub":"expense-agent"}` with a **hardcoded-claim
-> protocol mapper** — it is a _synthetic_ value, not real RFC 8693 delegation.
-> True delegation (a genuine `act`/`may_act` from an `actor_token`) requires
-> Keycloak 26.7's **experimental** `token-exchange-delegation` feature, which is
-> intentionally out of scope here.
+This request uses only a `subject_token`, so it has RFC 8693 impersonation
+semantics rather than delegation semantics. Keycloak records the client that
+requested the exchange as `azp=expense-agent`; this demo does not use an
+`actor_token` or an `act` claim.
 
 ## Prerequisites
 
@@ -85,8 +80,8 @@ model deciding which tool to call.
 1. **Before vs. after tokens.** `docker compose up`, then `bash scripts/show-tokens.sh`
    (or read the `demo` output). The exchanged token has `aud` narrowed to
    `expense-api`, `scope` narrowed to `expenses:read`, a shorter lifetime (300s vs
-   900s), and the synthetic `act={"sub":"expense-agent"}` — while `sub` stays
-   `accountant-123`. The **before** token is addressed to the agent
+   900s), and `azp=expense-agent` — while `sub` stays `accountant-123`. The
+   **before** token is addressed to the agent
    (`aud=expense-agent`): Keycloak only exchanges a subject token that names the
    requesting client in its `aud`.
 2. **Scenario 1 — "approval status of EXP-2517?"** → `fetch-expense` runs with the
@@ -143,7 +138,9 @@ execute: async (inputData, context) => {
 
 **Downstream verification** (`api/src/index.ts`): fetch the JWKS from Keycloak,
 verify the signature, check `iss` and `aud=expense-api`, then require the route's
-scope (`expenses:read` for reads, `expenses:approve` for approvals).
+scope (`expenses:read` for reads, `expenses:approve` for approvals). Successful
+requests and authenticated `insufficient_scope` failures log `sub` and `azp`
+for audit correlation.
 
 ## Notes
 

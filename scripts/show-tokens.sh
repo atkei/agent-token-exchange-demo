@@ -10,7 +10,7 @@ TOKEN_ENDPOINT="$KC/realms/$REALM/protocol/openid-connect/token"
 
 # Decode the JWT payload (base64url) using jq's @base64d, which tolerates the
 # missing padding, and print the claims that matter for this demo.
-decode() { jq -R 'split(".")[1] | gsub("-";"+") | gsub("_";"/") | @base64d | fromjson | {sub, aud, azp, scope, act, exp}'; }
+decode() { jq -R 'split(".")[1] | gsub("-";"+") | gsub("_";"/") | @base64d | fromjson | {sub, aud, azp, scope, exp}'; }
 
 echo "== BEFORE: accountant token (expense-portal, broad scope) =="
 OP=$(curl -s -X POST "$TOKEN_ENDPOINT" \
