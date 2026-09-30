@@ -9,7 +9,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@ai-sdk/openai": "^2.0.114",
     "@mastra/core": "^1.51.0",
     "zod": "^3.25.76"
   },

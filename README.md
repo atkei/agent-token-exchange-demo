@@ -17,7 +17,7 @@ The point in three lines:
 
 ```mermaid
 graph LR
-  D["demo.ts"] -->|"1. password grant"| KC[("Keycloak 26.7")]
+  D["demo.ts"] -->|"1. password grant"| KC[("Keycloak 26.7.4")]
   KC -->|"accountant token (broad, long-lived)"| D
   D -->|"2. generate(prompt, {requestContext})"| AG["Mastra expense-agent (OpenAI)"]
   AG --> T["tools: fetch-expense / approve-expense"]
@@ -30,12 +30,11 @@ The cage is enforced **twice**: the `expense-agent` client in Keycloak can only
 ever be granted `expenses:read`, and the downstream API independently checks
 `aud` + `scope` on every request.
 
-Note that asking for more does **not** raise an error. Requesting
-`scope=expenses:approve` on the exchange returns HTTP 200 with a token silently
-narrowed back to `scope=expenses:read` (verified on Keycloak 26.7.0) — the cage
-holds, but it holds quietly. Callers should check the `scope` in the response
-rather than assume a rejection, or reject such requests explicitly with a Client
-Policy.
+Asking for more is rejected outright, not silently narrowed. Requesting
+`scope=expenses:approve` on the exchange returns HTTP 400 `invalid_scope`, and
+requesting an audience outside the client's candidates (e.g.
+`audience=expense-portal`) returns HTTP 400 `invalid_request` (verified on
+Keycloak 26.7.0 and 26.7.4).
 
 This request uses only a `subject_token`, so it has RFC 8693 impersonation
 semantics rather than delegation semantics. Keycloak records the client that
@@ -45,16 +44,16 @@ requested the exchange as `azp=expense-agent`; this demo does not use an
 ## Prerequisites
 
 - Docker + Docker Compose
-- Node.js 20.12+ (the demo scripts load `.env` via Node's `--env-file-if-exists`)
+- Node.js 22.13+ (24 LTS recommended; required by `@mastra/core`)
 - An **OpenAI API key** — only for the LLM-driven `npm run demo`. The token-cage
   mechanics can be run without a key via `npm run demo:no-llm` (this demo is
-  fixed to OpenAI via `@ai-sdk/openai`).
+  fixed to OpenAI via Mastra's model router, `openai/gpt-6-luna` by default).
 - `jq` (only for the optional `scripts/show-tokens.sh`)
 
 ## Quick start
 
 ```bash
-# 1. Keycloak 26.7 (realm auto-imported: clients, scopes, user, mappers)
+# 1. Keycloak 26.7.4 (realm auto-imported: clients, scopes, user, mappers)
 docker compose up -d
 
 # 2. Downstream API (Hono + JWKS) on :8787
@@ -96,10 +95,10 @@ status right before it — both scenarios stay readable in a single terminal:
 
 ```
 [agent] GET /expenses/EXP-2517 → HTTP 200
-agent replies: Expense report EXP-2517 is currently **Pending approval (1 of 2 approvers signed off)**.
+agent replies: EXP-2517 is **pending approval**; 1 of 2 approvers has signed off.
 
 [agent] POST /expenses/EXP-2517/approve → HTTP 403 {"error":"insufficient_scope","required":"expenses:approve","granted":["expenses:read"]}
-agent replies: Couldn’t approve EXP-2517. The backend returned HTTP 403: `insufficient_scope` — required `expenses:approve`, but the granted scope is only `expenses:read`.
+agent replies: Expense report EXP-2517 was not approved or released for payment. The request failed with HTTP 403: insufficient scope; approval requires `expenses:approve`, but only `expenses:read` is granted.
 ```
 
 The API terminal logs the same two calls from the server side (`[api] … -> 200` /

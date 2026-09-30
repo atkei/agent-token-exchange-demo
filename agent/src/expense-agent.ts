@@ -1,9 +1,8 @@
-import { openai } from "@ai-sdk/openai";
 import { Agent } from "@mastra/core/agent";
 import { fetchExpenseTool } from "./tools/fetch-expense";
 import { approveExpenseTool } from "./tools/approve-expense";
 
-const MODEL = process.env.OPENAI_MODEL ?? "gpt-5-mini";
+const MODEL = process.env.OPENAI_MODEL ?? "gpt-6-luna";
 
 export const expenseAgent = new Agent({
   id: "expense-agent",
@@ -20,6 +19,7 @@ export const expenseAgent = new Agent({
     "judgement — authorization is enforced by the backend API, not by you.",
     "After the tool returns, briefly report the outcome, including any HTTP error.",
   ].join("\n"),
-  model: openai(MODEL),
+  // Mastra's model router reads OPENAI_API_KEY from the environment.
+  model: `openai/${MODEL}`,
   tools: { fetchExpense: fetchExpenseTool, approveExpense: approveExpenseTool },
 });
